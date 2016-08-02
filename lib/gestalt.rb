@@ -3,13 +3,13 @@ require 'gestalt/store'
 require 'json'
 require 'yaml'
 
-require 'byebug'
-
 module Gestalt
-  class UndefinedEnvironmentError < StandardError; end
+  class RootKeyNotFoundError < StandardError; end
   class UnsupportedExtensionError < StandardError; end
-  
-  DEFAULT_CONFIG_PATH = '/Users/mig/Workspace/gestalt/config/*'
+
+  # Default configuration values
+  CONFIG_PATH = './config/*'
+  IGNORE_UNSUPPORTED_EXTENSIONS = true
 
   def self.included(base)
     _gestalt_init(base)
@@ -21,33 +21,43 @@ module Gestalt
 
   attr_accessor :configuration
   alias :config :configuration
-  
-  def load_environment(env)
-    @configuration = Store.new("root")
-    env_to_s = env.to_s
+
+  # Loads a set of configuration files from a path specified in the gem configuration.
+  #
+  # @example load a set of JSON/YAML files located at "~/config" with "test" as their root key
+  #   object.gestalt.config_path = '~/config' # Contains file ~/config/test_1.json
+  #   object.load("test")
+  #   object.config.file_1 # Returns the contents of the file
+  # @example load a set of JSON/YAML files with "test" as their root key and call a block after it ends
+  #   object.load("test") do
+  #     puts "Finished loading!"
+  #   end
+  #
+  # @param key [String|Symbol] a key name representing the root key in all the configuration files
+  # @raise [UnsupportedExtensionError] if a file has an unsupported  extension and 'ignore_unsupported_extensions' is not set
+  # @raise [RootKeyNotFoundError] if there's a file whose root key is not the one passed as a parameter
+  # @yield any passed block at the end of the loading process
+  def load(key)
+    @configuration = Store.new
+    string_key = key.to_s
 
     files = Dir["#{_gestalt_no_trailing_slash(_gestalt.config_path)}/*"]
-
     files.each do |file|
-      name_without_extension = File.basename(file).gsub(/\.\w+/, '')
-      extension = File.extname(file)
-      file_pointer = File.open(file)
-
-      case extension
-      when '.json'
-        content = JSON.load(file_pointer)
-      when '.yml', '.yaml'
-        content = YAML.load(file_pointer)
+      begin
+        content = _gestalt_parse_file(file)
+      rescue UnsupportedExtensionError => e
+        raise e unless _gestalt.ignore_unsupported_extensions
       else
-        raise UnsupportedExtensionError, "Extension '#{extension}' is not supported"
-      end
-      
-      if content && content.has_key?(env_to_s)
-        @configuration[name_without_extension] = content[env_to_s]
-      else
-        raise UndefinedEnvironmentError, "Environment '#{env_to_s}' not found in #{file}"
+        if content&.has_key?(string_key)
+          name_without_extension = File.basename(file).gsub(/\.\w+/, '')
+          @configuration[name_without_extension] = content[string_key]
+        else
+          raise RootKeyNotFoundError, "Key '#{string_key}' not found at root of #{file}"
+        end
       end
     end
+
+    yield if block_given?
   end
 
   private
@@ -55,9 +65,10 @@ module Gestalt
   def self._gestalt_init(base)
     # Initialize with default values
     # Make sure to change these AFTER the module has been included/extended
-    config = Store.new('gestalt', {})
-    config.config_path = DEFAULT_CONFIG_PATH
-    
+    config = Store.new({}, 'gestalt')
+    config.config_path = CONFIG_PATH
+    config.ignore_unsupported_extensions = IGNORE_UNSUPPORTED_EXTENSIONS
+
     # "config" is only exposed through this closure
     base.define_singleton_method(:gestalt) do |&block|
       if block
@@ -69,7 +80,21 @@ module Gestalt
   end
 
   def _gestalt
-    self.class.gestalt
+    self.respond_to?(:gestalt) ? self.gestalt : self.class.gestalt
+  end
+
+  def _gestalt_parse_file(file)
+    extension = File.extname(file)
+    file_pointer = File.open(file)
+
+    case extension
+    when '.json'
+      JSON.load(file_pointer)
+    when '.yml', '.yaml'
+      YAML.load(file_pointer)
+    else
+      raise UnsupportedExtensionError, "Extension '#{extension}' is not supported"
+    end
   end
 
   def _gestalt_no_trailing_slash(path)

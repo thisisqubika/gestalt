@@ -3,7 +3,13 @@ require 'spec_helper'
 describe Gestalt::Store do
   let(:configuration) { {'key' => 'value'} }
 
-  subject { described_class.new('test', configuration) }
+  subject { described_class.new(configuration, 'test') }
+
+  describe '.new' do
+    it 'instantiates without parameters' do
+      expect(described_class.new).to be_kind_of(Gestalt::Store)
+    end
+  end
 
   describe '#[]' do
     context 'when key is included' do
@@ -27,7 +33,7 @@ describe Gestalt::Store do
         let(:configuration) { {nil => 'value'} }
 
         it 'allows access using any object' do
-          expect(subject[nil]).to eq('value')  
+          expect(subject[nil]).to eq('value')
         end
       end
     end
@@ -39,7 +45,7 @@ describe Gestalt::Store do
         }.to raise_error(Gestalt::KeyNotFoundError, 'Key "not_included" is not present at "test"' )
       end
     end
-    
+
   end
 
   describe '#[]=' do
@@ -48,22 +54,30 @@ describe Gestalt::Store do
       expect(subject['new_key']).to eq('new_value')
     end
   end
-  
+
   describe '#breadcrumbs' do
     let(:configuration) { {'child' => {'key' => 'value'}} }
-    let(:parent) { described_class.new('parent', configuration) }
+    let(:parent) { described_class.new(configuration, 'parent') }
 
-    subject { described_class.new('child', configuration['child'], parent) }
+    subject { described_class.new(configuration['child'], 'child', parent) }
 
     it 'returns the breadrcumbs in the expected format' do
       expect(subject.breadcrumbs).to eq('"parent" -> "child"')
     end
 
     context 'when subject is root' do
-      subject { parent }
+      subject { described_class.new(configuration, 'parent') }
 
       it 'returns the key name' do
         expect(subject.breadcrumbs).to eq('"parent"')
+      end
+
+      context 'when key name is not present' do
+        subject { described_class.new(configuration) }
+
+        it 'returns a generic root name' do
+          expect(subject.breadcrumbs).to eq(described_class::ROOT.inspect)
+        end
       end
     end
 
@@ -71,7 +85,7 @@ describe Gestalt::Store do
       let(:object) { Object.new }
       let(:configuration) { {object => {'key' => 'value'}} }
 
-      subject { described_class.new(object, configuration[object], parent) }
+      subject { described_class.new(configuration[object], object, parent) }
 
       it 'returns breadcrumbs with the string representation of the object' do
         expect(subject.breadcrumbs).to eq("\"parent\" -> #{object.to_s}")
@@ -83,7 +97,7 @@ describe Gestalt::Store do
   describe 'method chain syntax' do
     context 'when keys are strings' do
       let(:configuration) { {'key_1' => {'key_2' => {'key_3' => 'value'}}} }
-      
+
       it 'allows navigation through method chaining' do
         expect(subject.key_1.key_2.key_3).to be(configuration['key_1']['key_2']['key_3'])
       end
@@ -111,7 +125,7 @@ describe Gestalt::Store do
         end
       end
     end
-    
+
     describe 'key assignment' do
       it 'assigns a value to the key as a string' do
         expect { subject.key = 1 }.to change(subject, :key).to(1)
@@ -119,7 +133,7 @@ describe Gestalt::Store do
 
       it 'sets the value into the specified key' do
         subject.key = 1
-        expect(subject.key).to eq(1) 
+        expect(subject.key).to eq(1)
       end
     end
 

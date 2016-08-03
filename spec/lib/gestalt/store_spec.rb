@@ -94,72 +94,40 @@ describe Gestalt::Store do
 
   end
 
-  describe 'method chain syntax' do
-    context 'when keys are strings' do
-      let(:configuration) { {'key_1' => {'key_2' => {'key_3' => 'value'}}} }
+  describe 'missing methods' do
+    describe 'without arguments' do
+      context 'when there\'s a string key with the method name for each argument' do
+        let(:configuration) { {'key_1' => {'key_2' => {'key_3' => 'value'}}} }
 
-      it 'allows navigation through method chaining' do
-        expect(subject.key_1.key_2.key_3).to be(configuration['key_1']['key_2']['key_3'])
+        it 'allows navigation through method chaining' do
+          expect(subject.key_1.key_2.key_3).to be(configuration['key_1']['key_2']['key_3'])
+        end
+
+        it 'allows interchangeable access' do
+          expect(subject.key_1['key_2'].key_3).to be(configuration['key_1']['key_2']['key_3'])
+        end
       end
 
-      it 'allows interchangeable access' do
-        expect(subject.key_1['key_2'].key_3).to be(configuration['key_1']['key_2']['key_3'])
+      context 'when methods reference symbol keys' do
+        let(:configuration) { {'key_1' => {key_2: {key_3: 'value'}}} }
+
+        it 'raises an error' do
+          expect {
+            subject.key_1.key_2.key_3
+          }.to raise_error(Gestalt::KeyNotFoundError, 'Key "key_2" is not present at "test" -> "key_1"')
+        end
       end
-    end
 
-    context 'when keys are symbols' do
-      let(:configuration) { {'key_1' => {key_2: {key_3: 'value'}}} }
-
-      it 'raises an error' do
-        expect {
-          subject.key_1.key_2.key_3
-        }.to raise_error(Gestalt::KeyNotFoundError, 'Key "key_2" is not present at "test" -> "key_1"')
-      end
-    end
-
-    describe 'hash methods' do
-      context 'when hash method is called' do
-        it 'routes the call to the configuration hash' do
-          expect(configuration).to receive(:has_key?).with('key')
-          subject.has_key?('key')
+      context 'when a block is given' do
+        it 'calls the block and assigns the result' do
+          expect { subject.key { 'result' } }.to change(subject, :key).to('result')
         end
       end
     end
 
-    describe 'key assignment' do
+    describe 'with assignment syntax' do
       it 'assigns a value to the key as a string' do
         expect { subject.key = 1 }.to change(subject, :key).to(1)
-      end
-
-      it 'sets the value into the specified key' do
-        subject.key = 1
-        expect(subject.key).to eq(1)
-      end
-    end
-
-    context 'when calling a method named the same as a key' do
-      let(:configuration) { {'dup' => 'value'} }
-
-      it 'calls the original method' do
-        expect(subject.dup).to_not be(subject)
-      end
-    end
-
-    context 'when calling any method with a block' do
-      it 'calls the original method' do
-        expect(subject.tap { |o| o.inspect }).to be(subject)
-      end
-
-      it 'raises a NoMethodError when method doesn\'t exist' do
-        expect { subject.foo { |o| o.inspect } }.to raise_error(NoMethodError)
-      end
-
-      context 'when a key with the same name exists' do
-        let(:configuration) { {'tap' => 'value'} }
-
-        it 'calls the original method' do
-          expect(subject.tap { |o| o.inspect }).to be(subject)
-        end
       end
     end
 

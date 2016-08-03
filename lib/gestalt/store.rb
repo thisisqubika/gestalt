@@ -47,10 +47,12 @@ module Gestalt
       if stringified_name[-1] == '='
         name_without_assignment = stringified_name[0..-2]
         self[name_without_assignment] = args.first
-      elsif args.empty? && block.nil? && !block_given?
-        self[stringified_name]
-      elsif @configuration.respond_to?(name)
-        @configuration.send(name, *args, &block)
+      elsif args.empty?
+        if block_given? || !block.nil?
+          self[stringified_name] = block.call
+        else
+          self[stringified_name]
+        end
       else
         super
       end

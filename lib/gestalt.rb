@@ -37,7 +37,7 @@ module Gestalt
   # @raise [UnsupportedExtensionError] if a file has an unsupported  extension and 'ignore_unsupported_extensions' is not set
   # @raise [RootKeyNotFoundError] if there's a file whose root key is not the one passed as a parameter
   # @yield any passed block at the end of the loading process
-  def load(key)
+  def parse_configuration(key = nil)
     @configuration = Store.new
     string_key = key.to_s
 
@@ -48,8 +48,11 @@ module Gestalt
       rescue UnsupportedExtensionError => e
         raise e unless _gestalt.ignore_unsupported_extensions
       else
-        if content&.has_key?(string_key)
-          name_without_extension = File.basename(file).gsub(/\.\w+/, '')
+        name_without_extension = File.basename(file).gsub(/\.\w+/, '')
+
+        if key.nil?
+          @configuration[name_without_extension] = content
+        elsif content&.has_key?(string_key)
           @configuration[name_without_extension] = content[string_key]
         else
           raise RootKeyNotFoundError, "Key '#{string_key}' not found at root of #{file}"

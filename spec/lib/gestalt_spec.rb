@@ -26,8 +26,8 @@ describe Gestalt do
         expect(subject.gestalt).to be_kind_of(Gestalt::Store)
       end
 
-      it 'responds to #load as a class method' do
-        expect(subject).to respond_to(:load)
+      it 'responds to #parse_configuration as a class method' do
+        expect(subject).to respond_to(:parse_configuration)
       end
 
       describe 'the gestalt default configuration' do
@@ -50,8 +50,8 @@ describe Gestalt do
         expect(subject.gestalt).to be_kind_of(Gestalt::Store)
       end
 
-      it 'responds to #load as an instance method' do
-        expect(subject.new).to respond_to(:load)
+      it 'responds to #parse_configuration as an instance method' do
+        expect(subject.new).to respond_to(:parse_configuration)
       end
 
       describe 'the gestalt default configuration' do
@@ -68,7 +68,7 @@ describe Gestalt do
     end
   end
 
-  describe '#load' do
+  describe '#parse_configuration' do
     context 'when config path has a trailing slash' do
       before do
         subject.class.gestalt.config_path = 'path/to/config/path/'
@@ -76,13 +76,13 @@ describe Gestalt do
 
       it 'loads from the correct directory' do
         expect(Dir).to receive(:[]).with('path/to/config/path/*')
-        subject.load(env)
+        subject.parse_configuration(env)
       end
     end
 
     context 'when extension is supported' do
       before do
-        subject.load(env)
+        subject.parse_configuration(env)
       end
 
       context 'with json file' do
@@ -99,7 +99,6 @@ describe Gestalt do
           expect(subject.configuration).to be
         end
       end
-
     end
 
     context 'when extension is not supported' do
@@ -108,7 +107,7 @@ describe Gestalt do
       context 'when setting is to ignore the file' do
         it 'does not raise an error' do
           expect {
-            subject.load(env)
+            subject.parse_configuration(env)
           }.to_not raise_error
         end
       end
@@ -120,33 +119,42 @@ describe Gestalt do
 
         it 'raises an UnsupportedExtensionError' do
           expect {
-            subject.load(env)
+            subject.parse_configuration(env)
           }.to raise_error(Gestalt::UnsupportedExtensionError,
                            'Extension \'.txt\' is not supported')
         end
       end
     end
 
-
     context 'when root is not found' do
       it 'raises an RootKeyNotFoundError error' do
         expect {
-          subject.load('unknown')
+          subject.parse_configuration('unknown')
         }.to raise_error(Gestalt::RootKeyNotFoundError,
                          "Key 'unknown' not found at root of #{config_file_path}")
       end
     end
 
+    context 'when root is not passed' do
+      before do
+        subject.parse_configuration
+      end
+
+      it 'stores configuration from the root key' do
+        expect(subject.config.test).to be
+      end
+    end
+
     context 'when block is passed' do
       it 'calls the passed block at the end' do
-        expect(subject.load(env) { 'finished' }).to eq('finished')
+        expect(subject.parse_configuration(env) { 'finished' }).to eq('finished')
       end
     end
   end
 
   describe '#configuration' do
     before do
-      subject.load(env)
+      subject.parse_configuration(env)
     end
 
     it 'returns a Store instance' do

@@ -26,10 +26,10 @@ module Gestalt
   #
   # @example load a set of JSON/YAML files located at "~/config" with "test" as their root key
   #   object.gestalt.config_path = '~/config' # Contains file ~/config/test_1.json
-  #   object.load("test")
+  #   object.parse_configuration("test")
   #   object.config.file_1 # Returns the contents of the file
   # @example load a set of JSON/YAML files with "test" as their root key and call a block after it ends
-  #   object.load("test") do
+  #   object.parse_configuration("test") do
   #     puts "Finished loading!"
   #   end
   #
@@ -48,7 +48,7 @@ module Gestalt
       rescue UnsupportedExtensionError => e
         raise e unless _gestalt.ignore_unsupported_extensions
       else
-        name_without_extension = File.basename(file).gsub(/\.\w+/, '')
+        name_without_extension = File.basename(file, '.*')
 
         if key.nil?
           @configuration[name_without_extension] = content
@@ -65,43 +65,51 @@ module Gestalt
 
   private
 
+  # Initializes Gestalt's default configuration in a passed base class.
+  # Gestalt must be included or extended into the base class before calling this method.
+  #
+  # @param base [Class] the base class that is being expanded
   def self._gestalt_init(base)
-    # Initialize with default values
-    # Make sure to change these AFTER the module has been included/extended
     config = Store.new({}, 'gestalt')
     config.config_path = CONFIG_PATH
     config.ignore_unsupported_extensions = IGNORE_UNSUPPORTED_EXTENSIONS
 
-    # "config" is only exposed through this closure
     base.define_singleton_method(:gestalt) do |&block|
-      if block
-        block.call(config)
-      else
-        config
-      end
+      block ? block.call(config) : config
     end
   end
 
+  # Returns the Gestalt configuration store object
+  #
+  # @return [Gestalt::Store] the configuration store for Gestalt
   def _gestalt
     self.respond_to?(:gestalt) ? self.gestalt : self.class.gestalt
   end
 
+  # Parses a JSON or YAML configuration file
+  #
+  # @param file_or_path [File|String] file or path to file
+  # @return [Hash] the parsed contents of the file
   def _gestalt_parse_file(file)
+    stream = file.is_a?(String) ? File.open(file) : file
     extension = File.extname(file)
-    file_pointer = File.open(file)
 
     case extension
     when '.json'
-      JSON.load(file_pointer)
+      JSON.load(stream)
     when '.yml', '.yaml'
-      YAML.load(file_pointer)
+      YAML.load(stream)
     else
       raise UnsupportedExtensionError, "Extension '#{extension}' is not supported"
     end
   end
 
+  # Removes trailing slashes from a passed path
+  #
+  # @param path [String] a file path
+  # @return [String] path without trailing slashes
   def _gestalt_no_trailing_slash(path)
-    path.gsub(/\/$/, '')
+    path.gsub(/\/+$/, '')
   end
 
 end

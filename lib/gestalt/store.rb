@@ -33,6 +33,12 @@ module Gestalt
       @configuration[key] = value
     end
 
+    # Returns a string representation of the route to the current store
+    #
+    # @example three levels of breadcrumbs
+    #   store.breadcrumbs # => "root" -> "2ndlevel" -> "current"
+    #
+    # @return [String] a string representation of the route
     def breadcrumbs
       if @parent
         "#{@parent.breadcrumbs} -> #{@key.inspect}"
@@ -40,6 +46,8 @@ module Gestalt
         @key&.inspect || ROOT.inspect
       end
     end
+
+    private
 
     def method_missing(name, *args, &block)
       stringified_name = name.to_s

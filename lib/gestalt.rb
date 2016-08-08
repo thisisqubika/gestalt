@@ -9,6 +9,7 @@ module Gestalt
 
   # Default configuration values
   CONFIG_PATH = './config/*'
+  IGNORED_FILES_PATTERN = /\.sample\./
   IGNORE_UNSUPPORTED_EXTENSIONS = true
 
   def self.included(base)
@@ -43,6 +44,8 @@ module Gestalt
 
     files = Dir["#{_gestalt_no_trailing_slash(_gestalt.config_path)}/*"]
     files.each do |file|
+      next if file.match(_gestalt.ignored_files_pattern)
+
       begin
         content = _gestalt_parse_file(file)
       rescue UnsupportedExtensionError => e
@@ -73,6 +76,7 @@ module Gestalt
     config = Store.new({}, 'gestalt')
     config.config_path = CONFIG_PATH
     config.ignore_unsupported_extensions = IGNORE_UNSUPPORTED_EXTENSIONS
+    config.ignored_files_pattern = IGNORED_FILES_PATTERN
 
     base.define_singleton_method(:gestalt) do |&block|
       block ? block.call(config) : config

@@ -38,14 +38,6 @@ describe Gestalt::Store do
       end
     end
 
-    context 'when key is not included' do
-      it 'raises a KeyNotFoundError error' do
-        expect {
-          subject['not_included']
-        }.to raise_error(Gestalt::KeyNotFoundError, 'Key "not_included" is not present at "test"' )
-      end
-    end
-
   end
 
   describe '#[]=' do
@@ -108,10 +100,18 @@ describe Gestalt::Store do
         end
       end
 
+      context 'when key is not included' do
+        it 'raises a KeyNotFoundError error' do
+          expect {
+            subject.key_not_included
+          }.to raise_error(Gestalt::KeyNotFoundError, 'Key "key_not_included" is not present at "test"' )
+        end
+      end
+
       context 'when methods reference symbol keys' do
         let(:configuration) { {'key_1' => {key_2: {key_3: 'value'}}} }
 
-        it 'raises an error' do
+        it 'raises a KeyNotFoundError error' do
           expect {
             subject.key_1.key_2.key_3
           }.to raise_error(Gestalt::KeyNotFoundError, 'Key "key_2" is not present at "test" -> "key_1"')

@@ -86,6 +86,16 @@ describe Gestalt::Store do
 
   end
 
+  describe '#to_hash' do
+    it 'returns the configuration hash' do
+      expect(subject.to_hash).to eq(configuration)
+    end
+
+    it 'returns a copy' do
+      expect(subject.to_hash).to_not be(configuration)
+    end
+  end
+
   describe 'missing methods' do
     describe 'without arguments' do
       context 'when there\'s a string key with the method name for each argument' do

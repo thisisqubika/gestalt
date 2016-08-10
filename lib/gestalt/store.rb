@@ -42,6 +42,13 @@ module Gestalt
       end
     end
 
+    # Returns a copy of the configuration hash instance
+    #
+    # @return [Hash] a copy of the configuration hash instance
+    def to_hash
+      @configuration.dup
+    end
+
     private
 
     def method_missing(name, *args, &block)

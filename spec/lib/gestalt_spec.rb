@@ -69,6 +69,11 @@ describe Gestalt do
   end
 
   describe '#parse_configuration' do
+    it 'stores the root key' do
+      subject.parse_configuration(env)
+      expect(subject.class.gestalt.root_key).to eq(env)
+    end
+
     context 'when config path has a trailing slash' do
       before do
         subject.class.gestalt.config_path = 'path/to/config/path/'
@@ -138,6 +143,10 @@ describe Gestalt do
     context 'when root is not passed' do
       before do
         subject.parse_configuration
+      end
+
+      it 'stores the root key as nil' do
+        expect(subject.class.gestalt.root_key).to be_nil
       end
 
       it 'stores configuration from the root key' do

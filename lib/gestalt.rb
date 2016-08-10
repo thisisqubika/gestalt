@@ -40,7 +40,8 @@ module Gestalt
   # @yield any passed block at the end of the loading process
   def parse_configuration(key = nil)
     @configuration = Store.new
-    string_key = key.to_s
+
+    _gestalt.root_key = key.nil? ? nil : key.to_s
 
     files = Dir["#{_gestalt_no_trailing_slash(_gestalt.config_path)}/*"]
     files.each do |file|
@@ -53,12 +54,12 @@ module Gestalt
       else
         name_without_extension = File.basename(file, '.*')
 
-        if key.nil?
+        if _gestalt.root_key.nil?
           @configuration[name_without_extension] = content
-        elsif content&.has_key?(string_key)
-          @configuration[name_without_extension] = content[string_key]
+        elsif content&.has_key?(_gestalt.root_key)
+          @configuration[name_without_extension] = content[_gestalt.root_key]
         else
-          raise RootKeyNotFoundError, "Key '#{string_key}' not found at root of #{file}"
+          raise RootKeyNotFoundError, "Key '#{_gestalt.root_key}' not found at root of #{file}"
         end
       end
     end
